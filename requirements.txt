@@ -16,7 +16,8 @@ Pillow>=9.0.0
 segment-anything==1.0
 
 # Pose estimation
-controlnet-aux==0.0.7
+controlnet-aux>=0.0.7
+mediapipe>=0.10.0
 
 # Image processing
 numpy>=1.21.0
