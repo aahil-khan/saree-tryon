@@ -32,9 +32,9 @@ class PoseExtractor:
             from controlnet_aux import OpenposeDetector
             
             # Load OpenPose detector (downloads model on first use)
+            # Using the correct HuggingFace repo
             self.detector = OpenposeDetector.from_pretrained(
-                "lllyasviel/ControlNet-init",
-                filename="body_pose_model.pth"
+                "lllyasviel/ControlNet-init"
             )
             
             logger.info("OpenPose detector loaded successfully")
