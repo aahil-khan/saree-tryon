@@ -1,6 +1,6 @@
 # Core ML/DL dependencies
-torch==2.5.1
-torchvision==0.20.1
+torch==2.4.0
+torchvision==0.19.0
 
 # Diffusion and model libraries
 diffusers==0.27.0
@@ -8,9 +8,9 @@ transformers==4.40.0
 xformers==0.0.25.post1
 
 # Computer vision
-opencv-python==4.9.0.80
-scikit-image==0.22.0
-Pillow==10.1.0
+opencv-python==4.8.1.78
+scikit-image==0.21.0
+Pillow==10.0.1
 
 # Segmentation
 segment-anything==1.0
@@ -19,8 +19,8 @@ segment-anything==1.0
 controlnet-aux==0.0.7
 
 # Image processing
-numpy==1.25.2
-scipy==1.12.0
+numpy==1.24.3
+scipy==1.11.4
 
 # Configuration
 omegaconf==2.3.0
@@ -30,5 +30,5 @@ PyYAML==6.0
 gradio==4.41.0
 
 # Utilities
-tqdm==4.66.0
-matplotlib==3.8.2
+tqdm==4.65.0
+matplotlib==3.7.2
