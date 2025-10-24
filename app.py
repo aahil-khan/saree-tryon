@@ -63,7 +63,10 @@ def process_tryon(saree_image, model_image, blouse_image=None):
         # Step 3: Segment garments
         logger.info("Step 3/6: Segmenting garments...")
         try:
-            segmenter = segmentation.GarmentSegmenter(device="cuda")
+            segmenter = segmentation.GarmentSegmenter(
+                checkpoint_path="./models/sam2/sam2_hiera_large.pt",
+                device="cuda"
+            )
             
             # Segment saree
             saree_rgb, saree_mask = segmenter.segment_garment(
