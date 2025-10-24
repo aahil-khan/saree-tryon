@@ -26,12 +26,17 @@ class PoseExtractor:
         self.load_detector()
     
     def load_detector(self):
-        """Load OpenPose detector"""
+        """Load OpenPose detector via ControlNet"""
         try:
             logger.info("Loading OpenPose detector...")
-            # TODO: Implement OpenPose detector loading
-            # from controlnet_aux import OpenposeDetector
-            # self.detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet-init")
+            from controlnet_aux import OpenposeDetector
+            
+            # Load OpenPose detector (downloads model on first use)
+            self.detector = OpenposeDetector.from_pretrained(
+                "lllyasviel/ControlNet-init",
+                filename="body_pose_model.pth"
+            )
+            
             logger.info("OpenPose detector loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load OpenPose detector: {e}")
@@ -39,7 +44,7 @@ class PoseExtractor:
     
     def extract_pose(self, image_path: str, target_size: Tuple[int, int] = (768, 1024)) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Extract pose keypoints from model image
+        Extract pose keypoints from model image using OpenPose
         
         Args:
             image_path: Path to model image
@@ -57,19 +62,28 @@ class PoseExtractor:
                 raise ValueError(f"Failed to load image: {image_path}")
             
             # Convert BGR to RGB
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
             # Resize to target size
-            image = cv2.resize(image, target_size)
+            image_resized = cv2.resize(image_rgb, target_size)
             
-            # TODO: Run OpenPose inference
-            # pose_map = self.detector(image)
+            # Run OpenPose detection to get pose map
+            pose_map = self.detector(image_resized)
             
-            # Placeholder: return dummy pose map
-            pose_map = np.zeros((target_size[1], target_size[0], 3), dtype=np.uint8)
+            # Ensure pose_map is correct format (numpy array with shape [H, W, 3])
+            if isinstance(pose_map, np.ndarray):
+                if pose_map.dtype != np.uint8:
+                    pose_map = (pose_map * 255).astype(np.uint8)
+                if len(pose_map.shape) == 2:
+                    # Convert grayscale to RGB
+                    pose_map = cv2.cvtColor(pose_map, cv2.COLOR_GRAY2RGB)
+            else:
+                # If detection returns PIL Image, convert to numpy
+                import PIL
+                pose_map = np.array(pose_map)
             
             logger.info("Pose extraction completed successfully")
-            return image, pose_map
+            return image_resized, pose_map
             
         except Exception as e:
             logger.error(f"Error during pose extraction: {e}")

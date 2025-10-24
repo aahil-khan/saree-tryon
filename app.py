@@ -55,14 +55,34 @@ def process_tryon(saree_image, model_image, blouse_image=None):
             # Save generated blouse for reference
             utils.save_image(blouse_img, "./outputs/generated_blouse.png")
         
-        # Step 3: Segment garments (placeholder)
-        logger.info("Segmenting garments...")
-        saree_mask = np.ones((1024, 768), dtype=np.uint8) * 255
-        blouse_mask = np.ones((1024, 768), dtype=np.uint8) * 255
+        # Step 3: Segment garments using SAM 2
+        logger.info("Segmenting garments with SAM 2...")
+        try:
+            seg_results = segmentation.segment_saree_and_blouse(
+                saree_path=saree_image if isinstance(saree_image, str) else "./outputs/temp_saree.png",
+                blouse_path=blouse_image if isinstance(blouse_image, str) else None,
+                checkpoint_path="./models/sam2/sam2_hiera_large.pt",
+                device="cuda"
+            )
+            saree_mask = seg_results["saree_mask"]
+            blouse_mask = seg_results.get("blouse_mask", np.ones((1024, 768), dtype=np.uint8) * 255)
+        except Exception as e:
+            logger.warning(f"Segmentation failed: {e}. Using full masks as fallback.")
+            saree_mask = np.ones((1024, 768), dtype=np.uint8) * 255
+            blouse_mask = np.ones((1024, 768), dtype=np.uint8) * 255
         
-        # Step 4: Extract pose (placeholder)
-        logger.info("Extracting pose...")
-        pose_map = np.zeros((1024, 768, 3), dtype=np.uint8)
+        # Step 4: Extract pose using OpenPose
+        logger.info("Extracting pose with OpenPose...")
+        try:
+            pose_results = pose_extraction.extract_pose_from_model(
+                image_path=model_image if isinstance(model_image, str) else "./outputs/temp_model.png",
+                target_size=(768, 1024),
+                device="cuda"
+            )
+            pose_map = pose_results["pose_map"]
+        except Exception as e:
+            logger.warning(f"Pose extraction failed: {e}. Using zero pose map as fallback.")
+            pose_map = np.zeros((1024, 768, 3), dtype=np.uint8)
         
         # Step 5: Run try-on
         logger.info("Running try-on pipeline...")
@@ -105,25 +125,22 @@ def create_interface():
         """)
         
         with gr.Row():
-            with gr.Column(label="Inputs"):
-                gr.Markdown("### Upload Images")
+            with gr.Column():
+                gr.Markdown("### 📥 Upload Images")
                 
                 saree_input = gr.Image(
                     type="filepath",
-                    label="📍 Saree Fabric",
-                    info="Upload flat saree fabric image (512x512 to 1024x1024 px)"
+                    label="📍 Saree Fabric (512x512 to 1024x1024 px)"
                 )
                 
                 model_input = gr.Image(
                     type="filepath",
-                    label="👤 Model Photo",
-                    info="Upload model photo (768x1024 px, front-facing)"
+                    label="👤 Model Photo (768x1024 px, front-facing)"
                 )
                 
                 blouse_input = gr.Image(
                     type="filepath",
-                    label="👚 Blouse (Optional)",
-                    info="Upload blouse image or leave blank to auto-generate"
+                    label="👚 Blouse (Optional - auto-generate if blank)"
                 )
                 
                 generate_btn = gr.Button(
@@ -132,8 +149,8 @@ def create_interface():
                     size="lg"
                 )
             
-            with gr.Column(label="Output"):
-                gr.Markdown("### Generated Try-On")
+            with gr.Column():
+                gr.Markdown("### 📤 Generated Try-On")
                 
                 output_image = gr.Image(
                     label="Result",

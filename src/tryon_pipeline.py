@@ -27,15 +27,38 @@ class TryOnPipeline:
         self.load_model()
     
     def load_model(self):
-        """Load HR-VITON model"""
+        """Load HR-VITON model components"""
         try:
-            logger.info("Loading HR-VITON model...")
-            # TODO: Implement HR-VITON model loading
-            # from hr_viton import HRVITONModel
-            # self.model = HRVITONModel.from_pretrained(self.model_path)
-            # self.model = self.model.to(self.device)
-            # self.model.eval()
-            logger.info("HR-VITON model loaded successfully")
+            logger.info("Loading HR-VITON model components...")
+            import torch
+            from pathlib import Path
+            
+            # Verify checkpoint files exist
+            tocg_path = Path(self.model_path) / "condition_generator.pth"
+            gen_path = Path(self.model_path) / "image_generator.pth"
+            
+            if not tocg_path.exists():
+                raise FileNotFoundError(f"Condition generator checkpoint not found: {tocg_path}")
+            if not gen_path.exists():
+                raise FileNotFoundError(f"Image generator checkpoint not found: {gen_path}")
+            
+            logger.info(f"Found condition generator: {tocg_path}")
+            logger.info(f"Found image generator: {gen_path}")
+            
+            # Store paths for later use (actual model loading will happen in infer())
+            self.tocg_checkpoint = str(tocg_path)
+            self.gen_checkpoint = str(gen_path)
+            
+            # Try to import HR-VITON modules (will fail if not installed, but checkpoint paths are ready)
+            try:
+                from networks import ConditionGenerator, SPADEGenerator
+                self.condition_generator_class = ConditionGenerator
+                self.spade_generator_class = SPADEGenerator
+                logger.info("HR-VITON modules imported successfully")
+            except ImportError:
+                logger.warning("HR-VITON modules not available - will load checkpoints on first inference")
+            
+            logger.info("HR-VITON model paths configured successfully")
         except Exception as e:
             logger.error(f"Failed to load HR-VITON model: {e}")
             raise
@@ -47,33 +70,45 @@ class TryOnPipeline:
         Prepare inputs for HR-VITON inference
         
         Args:
-            model_img: Model image (768x1024 RGB)
-            saree_img: Saree image (RGB)
-            blouse_img: Blouse image (RGB)
+            model_img: Model image (768x1024 RGB, values 0-255)
+            saree_img: Saree image (RGB, values 0-255)
+            blouse_img: Blouse image (RGB, values 0-255)
             pose_map: Pose skeleton map (768x1024)
-            saree_mask: Saree segmentation mask
-            blouse_mask: Blouse segmentation mask (optional)
+            saree_mask: Saree segmentation mask (0-255)
+            blouse_mask: Blouse segmentation mask (optional, 0-255)
             
         Returns:
-            Dictionary with prepared inputs
+            Dictionary with prepared inputs normalized for HR-VITON
         """
         try:
             logger.info("Preparing inputs for HR-VITON...")
+            import torch
             
-            # TODO: Implement input preparation
-            # - Normalize images
-            # - Resize garments
-            # - Combine masks
-            # - Create conditioning inputs
+            # Normalize images to [-1, 1] range
+            def normalize_img(img):
+                img_float = img.astype(np.float32) / 127.5 - 1.0
+                return torch.from_numpy(img_float).permute(2, 0, 1).unsqueeze(0)
             
+            # Normalize masks to [0, 1] range
+            def normalize_mask(mask):
+                mask_float = mask.astype(np.float32) / 255.0
+                if len(mask.shape) == 2:
+                    mask_float = np.stack([mask_float] * 3, axis=-1)
+                return torch.from_numpy(mask_float).permute(2, 0, 1).unsqueeze(0)
+            
+            # Prepare tensors
             prepared_inputs = {
-                "model_image": model_img,
-                "saree_image": saree_img,
-                "blouse_image": blouse_img,
-                "pose_map": pose_map,
-                "saree_mask": saree_mask,
-                "blouse_mask": blouse_mask,
+                "model_image": normalize_img(model_img),
+                "saree_image": normalize_img(saree_img),
+                "blouse_image": normalize_img(blouse_img),
+                "pose_map": normalize_img(pose_map.astype(np.uint8)),
+                "saree_mask": normalize_mask(saree_mask),
+                "blouse_mask": normalize_mask(blouse_mask) if blouse_mask is not None else None,
             }
+            
+            logger.info(f"Input shapes: model={prepared_inputs['model_image'].shape}, "
+                       f"saree={prepared_inputs['saree_image'].shape}, "
+                       f"pose={prepared_inputs['pose_map'].shape}")
             
             logger.info("Inputs prepared successfully")
             return prepared_inputs
@@ -88,26 +123,60 @@ class TryOnPipeline:
         Run HR-VITON inference
         
         Args:
-            prepared_inputs: Dictionary with prepared inputs
+            prepared_inputs: Dictionary with prepared inputs (normalized tensors)
             num_inference_steps: Number of diffusion steps
             guidance_scale: Guidance scale for classifier-free guidance
             seed: Random seed for reproducibility
             
         Returns:
-            Generated output image (768x1024 RGB)
+            Generated output image (768x1024 RGB, values 0-255)
         """
         try:
-            logger.info(f"Running HR-VITON inference (steps={num_inference_steps})...")
+            logger.info(f"Running HR-VITON inference (steps={num_inference_steps}, guidance={guidance_scale})...")
+            import torch
             
-            # TODO: Implement HR-VITON inference
-            # - Set seed
-            # - Run diffusion process
-            # - Handle outputs
+            # Set seed for reproducibility
+            torch.manual_seed(seed)
+            np.random.seed(seed)
             
-            # Placeholder: return dummy output
-            output_img = np.random.randint(0, 255, (1024, 768, 3), dtype=np.uint8)
+            # Concatenate inputs for condition generator
+            # Format: [model_image, saree_image, saree_mask, pose_map]
+            condition_input = torch.cat([
+                prepared_inputs["model_image"],
+                prepared_inputs["saree_image"],
+                prepared_inputs["saree_mask"],
+                prepared_inputs["pose_map"]
+            ], dim=1)
             
-            logger.info("Inference completed successfully")
+            logger.info(f"Condition input shape: {condition_input.shape}")
+            
+            # Move to device
+            condition_input = condition_input.to(self.device)
+            
+            # TODO: Run actual HR-VITON inference
+            # with torch.no_grad():
+            #     # Step 1: Run condition generator
+            #     condition_output = self.condition_generator(condition_input)
+            #     
+            #     # Step 2: Run image generator with condition
+            #     output_tensor = self.image_generator(
+            #         prepared_inputs["model_image"].to(self.device),
+            #         condition_output,
+            #         num_steps=num_inference_steps,
+            #         guidance_scale=guidance_scale
+            #     )
+            
+            # For now, return placeholder output (will be replaced with actual inference)
+            logger.warning("Using placeholder output - actual HR-VITON inference not yet implemented")
+            
+            # Create a reasonable placeholder by blending model and saree images
+            model_img_np = (prepared_inputs["model_image"].squeeze().permute(1, 2, 0).numpy() + 1) / 2 * 255
+            saree_img_np = (prepared_inputs["saree_image"].squeeze().permute(1, 2, 0).numpy() + 1) / 2 * 255
+            
+            # Blend: 70% model, 30% saree
+            output_img = (model_img_np * 0.7 + saree_img_np * 0.3).astype(np.uint8)
+            
+            logger.info(f"Inference completed. Output shape: {output_img.shape}")
             return output_img
             
         except Exception as e:

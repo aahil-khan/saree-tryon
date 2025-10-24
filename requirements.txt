@@ -1,7 +1,6 @@
 # Core ML/DL dependencies
 torch==2.0.0
 torchvision==0.15.1
-pytorch-cuda=11.7
 
 # Diffusion and model libraries
 diffusers==0.20.2

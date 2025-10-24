@@ -32,10 +32,19 @@ class GarmentSegmenter:
         """Load SAM 2 model and initialize predictor"""
         try:
             logger.info("Loading SAM 2 model...")
-            # TODO: Implement SAM 2 model loading
-            # from segment_anything_2 import build_sam2
-            # self.model = build_sam2(checkpoint=self.checkpoint_path, device=self.device)
-            # self.predictor = SamPredictor2(self.model)
+            from segment_anything_2 import build_sam2
+            from segment_anything_2.sam2_image_predictor import SAM2ImagePredictor
+            
+            # Build SAM 2 model
+            self.model = build_sam2(
+                config_file="sam2_hiera_l.yaml",
+                ckpt_path=self.checkpoint_path,
+                device=self.device
+            )
+            
+            # Initialize predictor
+            self.predictor = SAM2ImagePredictor(self.model)
+            
             logger.info("SAM 2 model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load SAM 2 model: {e}")
@@ -43,7 +52,7 @@ class GarmentSegmenter:
     
     def segment_garment(self, image_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Segment garment from flat fabric image
+        Segment garment from flat fabric image using SAM 2
         
         Args:
             image_path: Path to garment image
@@ -60,16 +69,30 @@ class GarmentSegmenter:
                 raise ValueError(f"Failed to load image: {image_path}")
             
             # Convert BGR to RGB
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            # TODO: Run SAM 2 inference
-            # masks = self.predictor.predict(image)
+            # Set image for prediction
+            self.predictor.set_image(image_rgb)
             
-            # Placeholder: return dummy mask
-            mask = np.ones((image.shape[0], image.shape[1]), dtype=np.uint8) * 255
+            # Use automatic mask generation to segment the garment
+            # SAM 2 will automatically find prominent objects
+            masks, scores, logits = self.predictor.predict(
+                point_coords=None,
+                point_labels=None,
+                multimask_output=False,
+                return_logits=False
+            )
+            
+            # Get the best mask (highest confidence)
+            if len(masks) > 0:
+                mask = masks[0].astype(np.uint8) * 255
+            else:
+                # Fallback: return full image as mask if no objects detected
+                logger.warning("No objects detected by SAM 2, using full image mask")
+                mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
             
             logger.info("Segmentation completed successfully")
-            return image, mask
+            return image_rgb, mask
             
         except Exception as e:
             logger.error(f"Error during segmentation: {e}")
