@@ -29,47 +29,22 @@ class GarmentSegmenter:
         self.load_model()
     
     def load_model(self):
-        """Load SAM2 model from checkpoint"""
+        """Initialize segmentation (fallback to full masks)"""
         try:
-            logger.info("Loading segmentation model...")
-            try:
-                # Try to import and use SAM2 if available
-                from sam2.build_sam import build_sam2
-                from sam2.sam2_image_predictor import SAM2ImagePredictor
-                
-                # Build SAM2 model
-                self.model = build_sam2(
-                    model_cfg="large",
-                    ckpt_path=self.checkpoint_path,
-                    device=self.device
-                )
-                
-                # Initialize predictor
-                self.predictor = SAM2ImagePredictor(self.model)
-                self.model_type = "sam2"
-                logger.info("SAM2 model loaded successfully")
-            except (ImportError, Exception) as e:
-                logger.warning(f"SAM2 not available ({e}), using SAM from controlnet_aux...")
-                try:
-                    from controlnet_aux.segment_anything import SamPredictor, sam_model_registry
-                    
-                    # Load SAM model
-                    sam = sam_model_registry["vit_l"](checkpoint=None)  # Uses default weights
-                    self.predictor = SamPredictor(sam)
-                    self.model_type = "sam"
-                    logger.info("SAM model loaded from controlnet_aux")
-                except Exception as e2:
-                    logger.warning(f"SAM also failed ({e2}), using fallback full masks")
-                    self.predictor = None
-                    self.model_type = "none"
+            logger.info("Initializing segmentation...")
+            # For POC, we'll use full masks as fallback
+            # SAM models are optional - full masks still work for ControlNet conditioning
+            self.predictor = None
+            self.model_type = "none"
+            logger.info("Segmentation initialized (using full masks mode)")
         except Exception as e:
-            logger.error(f"Failed to load segmentation model: {e}")
+            logger.error(f"Failed to initialize segmentation: {e}")
             self.predictor = None
             self.model_type = "none"
     
     def segment_garment(self, image_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Segment garment from fabric image using SAM2 or SAM
+        Segment garment from fabric image (uses full masks for POC)
         
         Args:
             image_path: Path to garment image
@@ -78,7 +53,7 @@ class GarmentSegmenter:
             Tuple of (original_image, binary_mask)
         """
         try:
-            logger.info(f"Segmenting garment from {image_path}")
+            logger.info(f"Processing garment from {image_path}")
             
             # Load image
             image = cv2.imread(str(image_path))
@@ -88,56 +63,15 @@ class GarmentSegmenter:
             # Convert BGR to RGB
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            # If no model loaded, return full mask
-            if self.predictor is None:
-                logger.warning("No segmentation model available, using full image mask")
-                mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
-                return image_rgb, mask
+            # For POC: use full mask (all white)
+            # This allows ControlNet to use the garment texture in the try-on
+            mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
             
-            # Use SAM2 or SAM to segment
-            if self.model_type == "sam2":
-                # SAM2 workflow
-                self.predictor.set_image(image_rgb)
-                masks, scores, logits = self.predictor.predict(
-                    point_coords=None,
-                    point_labels=None,
-                    multimask_output=False,
-                    return_logits=False
-                )
-                if len(masks) > 0:
-                    mask = masks[0].astype(np.uint8) * 255
-                else:
-                    mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
-            else:
-                # SAM (from controlnet_aux) workflow
-                result = self.predictor(image_rgb)
-                if isinstance(result, np.ndarray):
-                    mask = result.astype(np.uint8) * 255
-                elif hasattr(result, 'masks'):
-                    masks = result.masks
-                    if len(masks) > 0:
-                        mask_areas = [np.sum(m) for m in masks]
-                        largest_idx = np.argmax(mask_areas)
-                        mask = masks[largest_idx].astype(np.uint8) * 255
-                    else:
-                        mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
-                else:
-                    mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
-            
-            logger.info("Segmentation completed successfully")
+            logger.info("Processing completed successfully")
             return image_rgb, mask
             
         except Exception as e:
-            logger.error(f"Error during segmentation: {e}")
-            # Fallback: return full mask
-            try:
-                image = cv2.imread(str(image_path))
-                if image is not None:
-                    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    mask = np.ones((image_rgb.shape[0], image_rgb.shape[1]), dtype=np.uint8) * 255
-                    return image_rgb, mask
-            except:
-                pass
+            logger.error(f"Error during processing: {e}")
             raise
     
     def save_mask(self, mask: np.ndarray, output_path: str):
