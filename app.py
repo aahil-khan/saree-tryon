@@ -38,7 +38,8 @@ def process_tryon(saree_image, model_image, blouse_image=None):
         saree_img = utils.load_image(saree_image) if isinstance(saree_image, str) else saree_image
         model_img = utils.load_image(model_image) if isinstance(model_image, str) else model_image
         
-        # Resize model image to target size
+        # Resize both images to target size
+        saree_img = utils.resize_image(saree_img, (768, 1024))
         model_img = utils.resize_image(model_img, (768, 1024))
         
         # Step 2: Generate or load blouse
