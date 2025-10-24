@@ -97,14 +97,17 @@ def process_tryon(saree_image, model_image, blouse_image=None):
         )
         
         # Step 6: Save output
-        output_path = "./outputs/results/tryon_output.png"
-        utils.save_image(output_img, output_path)
-        logger.info(f"Try-on completed! Output saved to {output_path}")
-        
-        # Convert to BGR for display
-        output_bgr = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
-        
-        return output_bgr, "✅ Try-on completed successfully!"
+        if output_img is not None and output_img.size > 0:
+            output_path = "./outputs/results/tryon_output.png"
+            utils.save_image(output_img, output_path)
+            logger.info(f"Try-on completed! Output saved to {output_path}")
+            
+            # Convert to BGR for display
+            output_bgr = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
+            return output_bgr, "✅ Try-on completed successfully!"
+        else:
+            logger.warning("Output image is empty or None")
+            return None, "❌ Error: Generated image is invalid"
         
     except Exception as e:
         logger.error(f"Error in try-on processing: {e}")
