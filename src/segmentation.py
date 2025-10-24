@@ -31,7 +31,7 @@ class GarmentSegmenter:
     def load_model(self):
         """Load SAM2 model from checkpoint"""
         try:
-            logger.info("Loading SAM2 model...")
+            logger.info("Loading segmentation model...")
             try:
                 # Try to import and use SAM2 if available
                 from sam2.build_sam import build_sam2
@@ -48,15 +48,20 @@ class GarmentSegmenter:
                 self.predictor = SAM2ImagePredictor(self.model)
                 self.model_type = "sam2"
                 logger.info("SAM2 model loaded successfully")
-            except ImportError:
-                logger.warning("SAM2 not installed, trying SAM from controlnet_aux...")
-                from controlnet_aux import SAMDetector
-                
-                self.predictor = SAMDetector.from_pretrained(
-                    "facebook/sam-vit-large"
-                )
-                self.model_type = "sam"
-                logger.info("SAM model loaded from controlnet_aux")
+            except (ImportError, Exception) as e:
+                logger.warning(f"SAM2 not available ({e}), using SAM from controlnet_aux...")
+                try:
+                    from controlnet_aux.segment_anything import SamPredictor, sam_model_registry
+                    
+                    # Load SAM model
+                    sam = sam_model_registry["vit_l"](checkpoint=None)  # Uses default weights
+                    self.predictor = SamPredictor(sam)
+                    self.model_type = "sam"
+                    logger.info("SAM model loaded from controlnet_aux")
+                except Exception as e2:
+                    logger.warning(f"SAM also failed ({e2}), using fallback full masks")
+                    self.predictor = None
+                    self.model_type = "none"
         except Exception as e:
             logger.error(f"Failed to load segmentation model: {e}")
             self.predictor = None

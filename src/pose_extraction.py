@@ -99,8 +99,15 @@ class PoseExtractor:
             # Draw skeleton connections and joints
             h, w = image.shape[:2]
             
-            for landmark in landmarks:
-                if landmark.visibility > 0.5:
+            # landmarks is a NormalizedLandmarkList object
+            # Access landmarks via .landmark attribute
+            if hasattr(landmarks, 'landmark'):
+                landmark_list = landmarks.landmark
+            else:
+                landmark_list = landmarks
+            
+            for landmark in landmark_list:
+                if hasattr(landmark, 'visibility') and landmark.visibility > 0.5:
                     x = int(landmark.x * w)
                     y = int(landmark.y * h)
                     
