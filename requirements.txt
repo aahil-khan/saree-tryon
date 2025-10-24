@@ -5,12 +5,12 @@ torchvision==0.20.1
 # Diffusion and model libraries
 diffusers==0.27.0
 transformers==4.40.0
-xformers==0.0.26
+xformers==0.0.25.post1
 
 # Computer vision
-opencv-python==4.10.0.84
-scikit-image==0.23.0
-Pillow==11.0.0
+opencv-python==4.9.0.80
+scikit-image==0.22.0
+Pillow==10.1.0
 
 # Segmentation
 segment-anything==1.0
@@ -19,16 +19,16 @@ segment-anything==1.0
 controlnet-aux==0.0.7
 
 # Image processing
-numpy==1.26.0
-scipy==1.13.0
+numpy==1.25.2
+scipy==1.12.0
 
 # Configuration
 omegaconf==2.3.0
 PyYAML==6.0
 
 # UI
-gradio==4.1.1
+gradio==4.41.0
 
 # Utilities
-tqdm==4.65.0
-matplotlib==3.7.2
+tqdm==4.66.0
+matplotlib==3.8.2
