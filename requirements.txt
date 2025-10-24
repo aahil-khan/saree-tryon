@@ -1,0 +1,35 @@
+# Core ML/DL dependencies
+torch==2.0.0
+torchvision==0.15.1
+pytorch-cuda=11.7
+
+# Diffusion and model libraries
+diffusers==0.20.2
+transformers==4.33.2
+xformers==0.0.19
+
+# Computer vision
+opencv-python==4.7.0.72
+scikit-image==0.21.0
+Pillow==10.0.0
+
+# Segmentation
+segment-anything==1.0
+
+# Pose estimation
+controlnet-aux==0.0.7
+
+# Image processing
+numpy==1.24.3
+scipy==1.11.1
+
+# Configuration
+omegaconf==2.3.0
+PyYAML==6.0
+
+# UI
+gradio==4.1.1
+
+# Utilities
+tqdm==4.65.0
+matplotlib==3.7.2

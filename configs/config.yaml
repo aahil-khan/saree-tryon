@@ -1,0 +1,76 @@
+# Saree Virtual Try-On POC - Configuration
+
+## Model Configuration
+models:
+  sam2:
+    checkpoint: "sam2_hiera_large.pt"
+    model_type: "hiera_large"
+    device: "cuda"  # or "cpu"
+  
+  hrviton:
+    model_name: "hrviton"
+    device: "cuda"  # or "cpu"
+    dtype: "float16"  # or "float32" for better quality but more memory
+  
+  controlnet:
+    model_id: "lllyasviel/sd-controlnet-openpose"
+    device: "cuda"  # or "cpu"
+
+## Path Configuration
+paths:
+  models_dir: "./models"
+  data_dir: "./data"
+  outputs_dir: "./outputs"
+  sam2_checkpoint: "./models/sam2/sam2_hiera_large.pt"
+  hrviton_checkpoint: "./models/hrviton"
+
+## Image Configuration
+image:
+  target_size: [768, 1024]
+  model_size: [768, 1024]
+  saree_size: [768, 1024]
+  blouse_size: [768, 1024]
+  min_size: 512
+  max_size: 1024
+
+## Processing Configuration
+processing:
+  batch_size: 1
+  num_inference_steps: 50
+  guidance_scale: 7.5
+  seed: 42
+  enable_attention_slicing: true
+  enable_xformers: true
+
+## Segmentation Configuration
+segmentation:
+  use_automatic_mask_generation: true
+  pred_iou_thresh: 0.88
+  stability_score_thresh: 0.95
+  min_mask_region_area: 100
+  box_nms_thresh: 0.7
+
+## Color Analysis Configuration
+color_analysis:
+  num_colors: 5
+  num_clusters: 3
+  contrast_threshold: 0.3
+
+## Output Configuration
+output:
+  format: "png"
+  quality: 95
+  save_intermediate: false  # Save masks, poses, etc.
+
+## Logging Configuration
+logging:
+  level: "INFO"
+  save_logs: true
+  log_file: "./logs/tryon.log"
+
+## Device Configuration
+device:
+  use_gpu: true
+  gpu_id: 0
+  mixed_precision: true  # Use float16 where possible
+  memory_efficient: false  # Slower but uses less memory
