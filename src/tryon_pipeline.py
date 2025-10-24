@@ -246,11 +246,16 @@ def run_tryon(model_img: np.ndarray, saree_img: np.ndarray,
         # Initialize pipeline
         pipeline = TryOnPipeline(device=device)
         
+        # Use default values if not provided (handle numpy arrays correctly)
+        blouse_img_use = blouse_img if blouse_img is not None else saree_img
+        pose_map_use = pose_map if pose_map is not None else np.zeros((1024, 768, 3), dtype=np.uint8)
+        saree_mask_use = saree_mask if saree_mask is not None else np.ones((1024, 768), dtype=np.uint8) * 255
+        
         # Prepare inputs
         prepared_inputs = pipeline.prepare_inputs(
-            model_img, saree_img, blouse_img or saree_img,
-            pose_map or np.zeros((1024, 768, 3), dtype=np.uint8),
-            saree_mask or np.ones((1024, 768), dtype=np.uint8) * 255,
+            model_img, saree_img, blouse_img_use,
+            pose_map_use,
+            saree_mask_use,
             blouse_mask
         )
         
