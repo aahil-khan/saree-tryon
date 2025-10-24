@@ -86,24 +86,33 @@ class TryOnPipeline:
             
             # Normalize images to [-1, 1] range
             def normalize_img(img):
+                if img is None:
+                    return None
                 img_float = img.astype(np.float32) / 127.5 - 1.0
                 return torch.from_numpy(img_float).permute(2, 0, 1).unsqueeze(0)
             
             # Normalize masks to [0, 1] range
             def normalize_mask(mask):
+                if mask is None:
+                    return None
                 mask_float = mask.astype(np.float32) / 255.0
                 if len(mask.shape) == 2:
                     mask_float = np.stack([mask_float] * 3, axis=-1)
                 return torch.from_numpy(mask_float).permute(2, 0, 1).unsqueeze(0)
+            
+            # Handle pose_map - ensure it's 3D (H, W, 3)
+            pose_map_processed = pose_map
+            if len(pose_map.shape) == 2:
+                pose_map_processed = np.stack([pose_map] * 3, axis=-1)
             
             # Prepare tensors
             prepared_inputs = {
                 "model_image": normalize_img(model_img),
                 "saree_image": normalize_img(saree_img),
                 "blouse_image": normalize_img(blouse_img),
-                "pose_map": normalize_img(pose_map.astype(np.uint8)),
+                "pose_map": normalize_img(pose_map_processed.astype(np.uint8)),
                 "saree_mask": normalize_mask(saree_mask),
-                "blouse_mask": normalize_mask(blouse_mask) if blouse_mask is not None else None,
+                "blouse_mask": normalize_mask(blouse_mask),
             }
             
             logger.info(f"Input shapes: model={prepared_inputs['model_image'].shape}, "
